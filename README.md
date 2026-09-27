@@ -21,7 +21,8 @@ Created by **ArMo** · Telegram [@mocntrl](https://t.me/mocntrl). Works on **Win
 
 Go to the **Actions** tab (latest build) or **Releases**, and download:
 
-- `MovieArchive-Windows.zip`: unzip and run `MovieArchive.exe`.
+- `MovieArchive-Setup.exe`: Windows installer (Start menu and desktop shortcut, uninstall from Windows Settings).
+- `MovieArchive-Windows-Portable.zip`: no install; unzip and run `MovieArchive.exe`.
 - `MovieArchive-Android.apk`: open it on your phone and allow "install unknown apps".
 
 ## First steps

@@ -36,11 +36,20 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - run: flutter build windows --release
-      - run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath MovieArchive-Windows.zip
+      - run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath MovieArchive-Windows-Portable.zip
+      - name: Build installer
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) { choco install innosetup -y --no-progress }
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*([\d.]+)').Matches[0].Groups[1].Value
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=$version installer\movie_archive.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Move-Item build\installer\MovieArchive-Setup.exe MovieArchive-Setup.exe
       - uses: actions/upload-artifact@v4
         with:
           name: MovieArchive-Windows
-          path: MovieArchive-Windows.zip
+          path: |
+            MovieArchive-Setup.exe
+            MovieArchive-Windows-Portable.zip
 
   android:
     needs: test
@@ -73,5 +82,6 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            MovieArchive-Windows.zip
+            MovieArchive-Setup.exe
+            MovieArchive-Windows-Portable.zip
             MovieArchive-Android.apk
