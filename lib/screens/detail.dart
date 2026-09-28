@@ -24,6 +24,18 @@ class DetailPage extends StatelessWidget {
     if (ok == false && context.mounted) toast(context, 'No match found. Try "Change match".');
   }
 
+  static String _votes(int v) => v >= 1000000
+      ? '${(v / 1e6).toStringAsFixed(1)}M votes'
+      : v >= 1000
+          ? '${v ~/ 1000}k votes'
+          : '$v votes';
+
+  Future<void> _setImdb(BuildContext context) async {
+    final input = await askText(context, 'Set IMDb ID', initial: movie.imdbId ?? '', hint: 'tt0111161 or an IMDb link');
+    if (input == null || input.isEmpty || !context.mounted) return;
+    await lookupImdb(context, movie, input);
+  }
+
   Future<void> _delete(BuildContext context) async {
     final onDisk = movie.driveId != null;
     if (!await confirm(
@@ -71,7 +83,9 @@ class DetailPage extends StatelessWidget {
             if (m.year != null) '${m.year}',
             if (m.runtime != null && m.runtime! > 0) '${m.runtime! ~/ 60}h ${m.runtime! % 60}m',
             if (m.language != null) m.language!,
-            if (m.rating != null && m.rating! > 0) '★ ${m.rating!.toStringAsFixed(1)}',
+            if (m.imdbRating != null)
+              'IMDb ★ ${m.imdbRating!.toStringAsFixed(1)}${m.imdbVotes != null ? ' (${_votes(m.imdbVotes!)})' : ''}',
+            if (m.rating != null && m.rating! > 0) 'TMDB ★ ${m.rating!.toStringAsFixed(1)}',
           ];
 
           final info = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -145,12 +159,14 @@ class DetailPage extends StatelessWidget {
                 onSelected: (v) => switch (v) {
                   'refresh' => _refresh(context),
                   'match' => Navigator.push(context, MaterialPageRoute(builder: (_) => LookupPage(forMovie: m))),
+                  'imdb' => _setImdb(context),
                   _ => _delete(context),
                 },
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'refresh', child: ListTile(leading: Icon(Icons.refresh), title: Text('Update info'))),
                   PopupMenuItem(
                       value: 'match', child: ListTile(leading: Icon(Icons.find_replace), title: Text('Change match'))),
+                  PopupMenuItem(value: 'imdb', child: ListTile(leading: Icon(Icons.tag), title: Text('Set IMDb ID'))),
                   PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline), title: Text('Remove'))),
                 ],
               ),

@@ -89,8 +89,8 @@ class Poster extends StatelessWidget {
     Widget img;
     if (local != null && local.existsSync()) {
       img = Image.file(local, fit: BoxFit.cover, errorBuilder: (_, _, _) => placeholder);
-    } else if (movie.posterPath != null) {
-      img = Image.network(Tmdb.image(movie.posterPath!),
+    } else if (movie.posterPath != null || movie.posterUrl != null) {
+      img = Image.network(movie.posterPath != null ? Tmdb.image(movie.posterPath!) : movie.posterUrl!,
           fit: BoxFit.cover, errorBuilder: (_, _, _) => placeholder);
     } else {
       img = placeholder;
@@ -112,7 +112,7 @@ class MovieCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Stack(children: [
           Poster(movie),
-          if (movie.rating != null && movie.rating! > 0)
+          if (movie.score != null)
             Positioned(
               top: 6,
               right: 6,
@@ -122,7 +122,7 @@ class MovieCard extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.star_rounded, size: 13, color: Colors.amber),
                   const SizedBox(width: 2),
-                  Text(movie.rating!.toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                  Text(movie.score!.toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontSize: 11)),
                 ]),
               ),
             ),
@@ -163,10 +163,10 @@ class MovieTile extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: movie.rating != null && movie.rating! > 0
+        trailing: movie.score != null
             ? Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
-                Text(' ${movie.rating!.toStringAsFixed(1)}'),
+                Text(' ${movie.score!.toStringAsFixed(1)}'),
               ])
             : null,
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailPage(movie))),
@@ -197,6 +197,13 @@ class EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Sets a typed IMDb ID on [m] and fetches all its info, with progress and messages.
+Future<void> lookupImdb(BuildContext context, Movie m, String input) async {
+  final ok = await withProgress(context, 'Getting movie info', (_) => archive.setImdbId(m, input));
+  if (!context.mounted || ok == null) return;
+  toast(context, ok ? 'Info updated for "${m.title}".' : 'No movie found with that IMDb ID.');
 }
 
 /// Runs [task] behind a small progress dialog. [task] gets a function to update the text.

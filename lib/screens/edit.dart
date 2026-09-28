@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../archive.dart';
 import '../models.dart';
+import '../tmdb.dart';
+import '../widgets.dart';
 
 /// Edit any field by hand. Also used to add a movie that is not on TMDB.
 class EditPage extends StatefulWidget {
@@ -35,6 +37,7 @@ class _EditPageState extends State<EditPage> {
     String? s(String k) => c[k]!.text.trim().isEmpty ? null : c[k]!.text.trim();
     List<String> l(String k) => [for (final x in c[k]!.text.split(',')) if (x.trim().isNotEmpty) x.trim()];
     if (s('Title') == null) return;
+    final oldImdb = m.imdbId;
     m
       ..title = s('Title')!
       ..year = int.tryParse(c['Year']!.text.trim())
@@ -46,10 +49,14 @@ class _EditPageState extends State<EditPage> {
       ..collection = s('Collection / franchise')
       ..language = s('Language')
       ..countries = l('Country')
-      ..imdbId = s('IMDb ID')
+      ..imdbId = s('IMDb ID') == null ? null : imdbIdIn(s('IMDb ID')!) ?? s('IMDb ID')
       ..tags = l('My tags')
       ..notes = s('Notes');
     isNew ? await archive.add(m) : await archive.save();
+    if (!mounted) return;
+    // A new IMDb ID: fetch everything for that movie.
+    final imdb = m.imdbId;
+    if (imdb != null && imdb != oldImdb && archive.canLookup) await lookupImdb(context, m, imdb);
     if (mounted) Navigator.pop(context);
   }
 
@@ -78,7 +85,11 @@ class _EditPageState extends State<EditPage> {
                     maxLines: e.key == 'Notes' ? 4 : 1,
                     decoration: InputDecoration(
                       labelText: e.key,
-                      helperText: _lists.contains(e.key) ? 'Separate with commas' : null,
+                      helperText: _lists.contains(e.key)
+                          ? 'Separate with commas'
+                          : e.key == 'IMDb ID'
+                              ? 'Paste an IMDb ID or link: all info is fetched when you save'
+                              : null,
                     ),
                   ),
                 ),

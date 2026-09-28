@@ -17,6 +17,8 @@ void main() {
       'Alien.Directors.Cut.1979.mkv': ('Alien', 1979),
       'Seven Samurai CD1.avi': ('Seven Samurai', null),
       'Pulp Fiction - 1994': ('Pulp Fiction', 1994),
+      'Heat (1995) {imdb-tt0113277}': ('Heat', 1995),
+      'Heat.1995.tt0113277.1080p.mkv': ('Heat', 1995),
     };
     cases.forEach((raw, want) {
       final got = parseName(raw);
@@ -39,11 +41,13 @@ void main() {
     await touch('Loose/Alien.1979.mkv');
     await touch('Loose/Aliens.1986.mkv');
     await touch('notes.txt');
+    await touch('Seven (1995) [tt0114369]/se7en.mkv');
 
     final found = await scanFolder(root.path);
     expect(found.map((m) => m.name.toString()).toList(),
-        ['Alien (1979)', 'Aliens (1986)', 'Heat (1995)', 'Seven Samurai (1954)']);
+        ['Alien (1979)', 'Aliens (1986)', 'Heat (1995)', 'Seven (1995)', 'Seven Samurai (1954)']);
     expect(found.last.size, 2);
+    expect(found.map((m) => m.imdbId).whereType<String>(), ['tt0114369']);
     await root.delete(recursive: true);
   });
 }

@@ -8,6 +8,8 @@ Created by **ArMo** · Telegram [@mocntrl](https://t.me/mocntrl). Works on **Win
 
 - **Scan drives.** Pick a hard drive or folder. The app finds every movie file, reads the title and year from the file or folder name, and saves it. Each drive gets its own list; the Library shows all drives combined.
 - **Automatic info and posters.** With a free TMDB key, the app fills in director, cast, genre, sub-genre, collection/franchise, language, country, rating, runtime, IMDb ID, and a poster, for every movie.
+- **IMDb data.** With a free OMDb key, every movie also gets its IMDb rating and votes. Without a TMDB key, all info comes from IMDb through OMDb.
+- **Exact match by IMDb ID.** Type or paste an IMDb ID (or link) for any movie (*Edit* or *Set IMDb ID*), and the app fetches everything for that exact movie. IMDb IDs in file or folder names (`Heat (1995) {imdb-tt0113277}`) are used automatically.
 - **Search everything.** One search box covers title, director, actor, year, genre, language, collection, tags and notes.
 - **Browse and filter** by genre, sub-genre, director, actor, year, decade, language, country, collection, your own tags, or drive. Combine filters (for example: *Director = Kubrick* and *Decade = 1970s*).
 - **Add movies by hand**, by title, or by IMDb ID (`tt0111161`). Edit any field.
@@ -27,8 +29,12 @@ Go to the **Actions** tab (latest build) or **Releases**, and download:
 
 ## First steps
 
-1. **Get a free TMDB key:** make an account at [themoviedb.org](https://www.themoviedb.org/), then go to *Settings → API* and copy the *API Key* (or the *API Read Access Token*). Paste it in the app under **Settings → Movie info**. Each user uses their own key.
-2. **Windows:** open **Drives → Scan a drive**, pick the folder, and give the drive a name (for example "WD Blue 2TB"). Then choose **Find info** to fetch posters and details.
+1. **Get free keys** (each user uses their own; one is enough, both is best):
+   - **TMDB** (info and posters): make an account at [themoviedb.org](https://www.themoviedb.org/), then *Settings → API*, and copy the *API Key*.
+   - **OMDb** (IMDb rating): get one at [omdbapi.com/apikey.aspx](https://www.omdbapi.com/apikey.aspx) (free: 1,000 movies per day).
+
+   Paste them in the app under **Settings → Movie info**.
+2. **Windows:** open **Drives → Scan a drive**, pick the folder, and give the drive a name (for example "WD Blue 2TB"). Info and posters are fetched automatically right after the scan.
 3. Browse, search, and filter in **Library** and **Browse**.
 
 Tip: movies named like `Title (Year)` or `Title.Year.1080p...` are matched best.
@@ -63,6 +69,6 @@ flutter build apk       # needs Android SDK
 
 ## Credits
 
-Created by ArMo ([@mocntrl](https://t.me/mocntrl) on Telegram). Movie data and images from [TMDB](https://www.themoviedb.org/). This product uses the TMDB API but is not endorsed or certified by TMDB.
+Created by ArMo ([@mocntrl](https://t.me/mocntrl) on Telegram). Movie data and images from [TMDB](https://www.themoviedb.org/); IMDb ratings through [OMDb](https://www.omdbapi.com/). This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 License: MIT

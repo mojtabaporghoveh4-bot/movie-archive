@@ -24,7 +24,7 @@ class _LibraryPageState extends State<LibraryPage> {
   Future<void> _fetchMissing() async {
     final todo = archive.movies.where((m) => !m.matched).toList();
     if (todo.isEmpty) return toast(context, 'All movies already have info.');
-    if (archive.tmdb == null) return toast(context, 'Add your free TMDB key in Settings first.');
+    if (!archive.canLookup) return toast(context, 'Add a free TMDB or OMDb key in Settings first.');
     final found = await withProgress(context, 'Finding movie info', (update) => archive.fetchMany(todo, update));
     if (found == null) return;
     if (mounted) toast(context, 'Found info for $found of ${todo.length} movies.');

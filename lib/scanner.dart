@@ -32,7 +32,7 @@ ParsedName parseName(String raw) {
 
   // Drop bracket tags like [YTS] but keep ones holding a year like [1999].
   s = s.replaceAllMapped(RegExp(r'\[([^\]]*)\]'), (m) => _year.hasMatch(m[1]!) ? ' ${m[1]} ' : ' ');
-  s = s.replaceAll(RegExp(r'[._]'), ' ').replaceAll(_part, ' ');
+  s = s.replaceAll(_imdbTag, ' ').replaceAll(RegExp(r'[._]'), ' ').replaceAll(_part, ' ');
 
   // The year is the last 19xx/20xx that is not at the very start (so "1917 (2019)" works)
   // and not in the future (so "Blade Runner 2049" without a year is not read as 2049).
@@ -58,8 +58,11 @@ class ScannedMovie {
   final String relPath; // relative to the scanned root
   final int size;
   final ParsedName name;
-  ScannedMovie(this.relPath, this.size, this.name);
+  final String? imdbId; // when the file or folder name has one, e.g. "Heat (1995) {imdb-tt0113277}"
+  ScannedMovie(this.relPath, this.size, this.name, [this.imdbId]);
 }
+
+final _imdbTag = RegExp(r'[\[\({]?\b(imdb(id)?[-_ =]?)?(tt\d{7,8})\b[\]\)}]?', caseSensitive: false);
 
 bool _skip(String path) {
   final l = path.toLowerCase();
@@ -100,7 +103,8 @@ Future<List<ScannedMovie>> scanFolder(String root, {void Function(int found)? on
           size += f.lengthSync();
         } catch (_) {}
       }
-      result.add(ScannedMovie(p.relative(g.first.path, from: root), size, name));
+      final rel = p.relative(g.first.path, from: root);
+      result.add(ScannedMovie(rel, size, name, _imdbTag.allMatches(rel).lastOrNull?[3]?.toLowerCase()));
     }
   }
   result.sort((a, b) => a.name.title.toLowerCase().compareTo(b.name.title.toLowerCase()));

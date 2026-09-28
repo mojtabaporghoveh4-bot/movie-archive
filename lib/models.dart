@@ -39,8 +39,11 @@ class Movie {
   String? imdbId;
   String? overview;
   int? runtime; // minutes
-  double? rating;
+  double? rating; // TMDB user score
+  double? imdbRating;
+  int? imdbVotes;
   String? posterPath; // TMDB image path, e.g. /abc.jpg
+  String? posterUrl; // full poster URL when info came from OMDb
   String? language;
   String? collection;
   String? subGenre;
@@ -67,7 +70,10 @@ class Movie {
     this.overview,
     this.runtime,
     this.rating,
+    this.imdbRating,
+    this.imdbVotes,
     this.posterPath,
+    this.posterUrl,
     this.language,
     this.collection,
     this.subGenre,
@@ -89,7 +95,10 @@ class Movie {
         tags = tags ?? [],
         added = added ?? DateTime.now();
 
-  bool get matched => tmdbId != null;
+  bool get matched => tmdbId != null || (imdbId != null && (overview?.isNotEmpty ?? false));
+
+  /// IMDb rating when known, otherwise the TMDB score.
+  double? get score => imdbRating ?? ((rating ?? 0) > 0 ? rating : null);
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -104,7 +113,10 @@ class Movie {
         'overview': overview,
         'runtime': runtime,
         'rating': rating,
+        'imdbRating': imdbRating,
+        'imdbVotes': imdbVotes,
         'posterPath': posterPath,
+        'posterUrl': posterUrl,
         'language': language,
         'collection': collection,
         'subGenre': subGenre,
@@ -132,7 +144,10 @@ class Movie {
         overview: j['overview'],
         runtime: (j['runtime'] as num?)?.toInt(),
         rating: (j['rating'] as num?)?.toDouble(),
+        imdbRating: (j['imdbRating'] as num?)?.toDouble(),
+        imdbVotes: (j['imdbVotes'] as num?)?.toInt(),
         posterPath: j['posterPath'],
+        posterUrl: j['posterUrl'],
         language: j['language'],
         collection: j['collection'],
         subGenre: j['subGenre'],

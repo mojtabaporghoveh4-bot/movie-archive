@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
+import 'omdb.dart';
 import 'scanner.dart';
 import 'tmdb.dart';
 
@@ -99,6 +100,12 @@ class Archive extends ChangeNotifier {
   set tmdbKey(String v) => prefs.setString('tmdbKey', v.trim()).then((_) => notifyListeners());
   Tmdb? get tmdb => tmdbKey.isEmpty ? null : Tmdb(tmdbKey);
 
+  String get omdbKey => prefs.getString('omdbKey') ?? '';
+  set omdbKey(String v) => prefs.setString('omdbKey', v.trim()).then((_) => notifyListeners());
+  Omdb? get omdb => omdbKey.isEmpty ? null : Omdb(omdbKey);
+
+  bool get canLookup => tmdb != null || omdb != null;
+
   String? get syncFolder => prefs.getString('syncFolder');
   set syncFolder(String? v) =>
       (v == null ? prefs.remove('syncFolder') : prefs.setString('syncFolder', v)).then((_) => save());
@@ -156,7 +163,7 @@ class Archive extends ChangeNotifier {
 
   static const csvColumns = [
     'Title', 'Year', 'Original title', 'Director', 'Cast', 'Genre', 'Sub-genre', 'Collection', 'Language', 'Country',
-    'Rating', 'Runtime', 'IMDb ID', 'TMDB ID', 'Tags', 'Watched', 'Drive', 'Path', 'Size (GB)', 'Notes',
+    'IMDb rating', 'TMDB rating', 'Runtime', 'IMDb ID', 'TMDB ID', 'Tags', 'Watched', 'Drive', 'Path', 'Size (GB)', 'Notes',
   ];
 
   /// A spreadsheet of [list] that opens in Excel or Google Sheets.
@@ -166,7 +173,7 @@ class Archive extends ChangeNotifier {
       for (final m in list)
         [
           m.title, m.year, m.originalTitle, m.directors.join(', '), m.cast.join(', '), m.genres.join(', '), m.subGenre,
-          m.collection, m.language, m.countries.join(', '), m.rating?.toStringAsFixed(1), m.runtime, m.imdbId, m.tmdbId,
+          m.collection, m.language, m.countries.join(', '), m.imdbRating, m.rating?.toStringAsFixed(1), m.runtime, m.imdbId, m.tmdbId,
           m.tags.join(', '), m.watched ? 'Yes' : 'No', driveName(m), m.path,
           m.sizeBytes == null ? null : (m.sizeBytes! / 1e9).toStringAsFixed(2), m.notes,
         ].map((v) => v ?? '').toList(),
@@ -203,7 +210,8 @@ class Archive extends ChangeNotifier {
         collection: cell('collection').isEmpty ? null : cell('collection'),
         language: cell('language').isEmpty ? null : cell('language'),
         countries: split(cell('country')),
-        rating: double.tryParse(cell('rating')),
+        imdbRating: double.tryParse(cell('imdb rating')),
+        rating: double.tryParse(cell('tmdb rating')),
         runtime: int.tryParse(cell('runtime')),
         imdbId: cell('imdb id').isEmpty ? null : cell('imdb id'),
         tmdbId: int.tryParse(cell('tmdb id')),
@@ -259,7 +267,7 @@ class Archive extends ChangeNotifier {
       SortBy.title => (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
       SortBy.yearNew => (a, b) => cmp(b.year, a.year),
       SortBy.yearOld => (a, b) => cmp(a.year, b.year),
-      SortBy.rating => (a, b) => cmp(b.rating, a.rating),
+      SortBy.rating => (a, b) => cmp(b.score, a.score),
       SortBy.added => (a, b) => b.added.compareTo(a.added),
     });
     return list;
@@ -317,8 +325,10 @@ class Archive extends ChangeNotifier {
       final existing = known.remove(f.relPath.toLowerCase());
       if (existing != null) {
         existing.sizeBytes = f.size;
+        existing.imdbId ??= f.imdbId;
       } else {
-        movies.add(Movie(title: f.name.title, year: f.name.year, driveId: drive.id, path: f.relPath, sizeBytes: f.size));
+        movies.add(Movie(
+            title: f.name.title, year: f.name.year, imdbId: f.imdbId, driveId: drive.id, path: f.relPath, sizeBytes: f.size));
         added++;
       }
     }
@@ -327,20 +337,48 @@ class Archive extends ChangeNotifier {
     return (added, known.length);
   }
 
-  /// Finds the movie on TMDB (by [tmdbId], IMDb ID, or title + year) and fills in its info.
+  /// Finds the movie online (by [tmdbId], IMDb ID, or title + year) and fills in its info.
+  /// TMDB gives the full info and poster; OMDb adds the IMDb rating, and fills in
+  /// everything when TMDB is not set up or has no match.
   Future<bool> fetchInfo(Movie m, {int? tmdbId}) async {
-    final t = tmdb;
-    if (t == null) throw TmdbException('Add your TMDB key in Settings first.');
-    tmdbId ??= m.tmdbId;
-    if (tmdbId == null) {
-      var hits = await t.lookup(m.imdbId ?? m.title, year: m.year);
-      if (hits.isEmpty && m.year != null && m.imdbId == null) hits = await t.search(m.title);
-      if (hits.isEmpty) return false;
-      tmdbId = hits.first.id;
+    final t = tmdb, o = omdb;
+    if (t == null && o == null) throw LookupException('Add a free TMDB or OMDb key in Settings first.');
+    var found = false;
+    if (t != null) {
+      tmdbId ??= m.tmdbId;
+      if (tmdbId == null) {
+        var hits = await t.lookup(m.imdbId ?? m.title, year: m.year);
+        if (hits.isEmpty && m.year != null && m.imdbId == null) hits = await t.search(m.title);
+        tmdbId = hits.firstOrNull?.id;
+      }
+      if (tmdbId != null) {
+        Tmdb.apply(m, await t.details(tmdbId));
+        found = true;
+      }
     }
-    Tmdb.apply(m, await t.details(tmdbId));
-    if (isDesktop) await downloadPoster(m);
-    return true;
+    if (o != null) {
+      final d = await o.movie(imdbId: m.imdbId, title: m.title, year: m.year);
+      if (d != null) {
+        Omdb.apply(m, d, full: !found);
+        found = true;
+      }
+    }
+    if (found && isDesktop) await downloadPoster(m);
+    return found;
+  }
+
+  /// Sets the IMDb ID the user typed (or pasted as a link) and fetches that movie's info.
+  Future<bool> setImdbId(Movie m, String input) async {
+    final id = imdbIdIn(input);
+    if (id == null) throw LookupException('That is not an IMDb ID. It looks like tt0111161.');
+    m
+      ..imdbId = id
+      ..tmdbId = null
+      ..posterPath = null
+      ..posterUrl = null;
+    final ok = await fetchInfo(m);
+    await save();
+    return ok;
   }
 
   /// Looks up many movies. Skips ones that fail, but stops on a bad key or no internet.
@@ -351,8 +389,8 @@ class Archive extends ChangeNotifier {
         update('${i + 1} of ${todo.length}\n${todo[i].title}');
         try {
           if (await fetchInfo(todo[i])) found++;
-        } on TmdbException catch (e) {
-          if (e.message.contains('key') || e.message.contains('internet')) rethrow;
+        } on LookupException catch (e) {
+          if (e.message.contains('key') || e.message.contains('internet') || e.message.contains('limit')) rethrow;
         }
       }
     } finally {
@@ -361,14 +399,20 @@ class Archive extends ChangeNotifier {
     return found;
   }
 
-  File? posterFile(Movie m) => m.tmdbId == null ? null : File(p.join(posterDir.path, '${m.tmdbId}.jpg'));
+  File? posterFile(Movie m) {
+    final id = m.tmdbId?.toString() ?? m.imdbId;
+    return id == null ? null : File(p.join(posterDir.path, '$id.jpg'));
+  }
+
+  String? posterUrl(Movie m) => m.posterPath != null ? Tmdb.image(m.posterPath!, size: 'w500') : m.posterUrl;
 
   /// Keeps a local copy of the poster so the desktop app works offline.
   Future<void> downloadPoster(Movie m) async {
     final f = posterFile(m);
-    if (f == null || m.posterPath == null || await f.exists()) return;
+    final url = posterUrl(m);
+    if (f == null || url == null || await f.exists()) return;
     try {
-      final r = await http.get(Uri.parse(Tmdb.image(m.posterPath!, size: 'w500')));
+      final r = await http.get(Uri.parse(url));
       if (r.statusCode != 200) return;
       await f.parent.create(recursive: true);
       await f.writeAsBytes(r.bodyBytes);

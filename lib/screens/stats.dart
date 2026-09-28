@@ -19,8 +19,8 @@ class StatsPage extends StatelessWidget {
             }
             final size = all.fold<int>(0, (s, m) => s + (m.sizeBytes ?? 0));
             final minutes = all.fold<int>(0, (s, m) => s + (m.runtime ?? 0));
-            final rated = all.where((m) => (m.rating ?? 0) > 0);
-            final avg = rated.isEmpty ? 0 : rated.fold<double>(0, (s, m) => s + m.rating!) / rated.length;
+            final rated = all.where((m) => m.score != null);
+            final avg = rated.isEmpty ? 0 : rated.fold<double>(0, (s, m) => s + m.score!) / rated.length;
             final watched = all.where((m) => m.watched).length;
             final tiles = [
               ('Movies', '${all.length}', Icons.movie_outlined),

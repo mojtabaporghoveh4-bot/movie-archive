@@ -32,9 +32,8 @@ class DrivesPage extends StatelessWidget {
     if (r == null || !context.mounted) return;
     final (added, removed) = r;
     toast(context, 'Done: $added new, $removed no longer there.');
-    if (added > 0 && archive.tmdb != null && await confirm(context, 'Find info and posters?',
-        'Look up the $added new movies online (title, director, cast, genre, poster…)?', ok: 'Find info')) {
-      if (!context.mounted) return;
+    // New movies get their info and posters right away.
+    if (added > 0 && archive.canLookup) {
       final todo = archive.movies.where((m) => !m.matched && m.driveId == (drive?.id ?? archive.drives.last.id)).toList();
       await withProgress(context, 'Finding movie info', (update) => archive.fetchMany(todo, update));
     }

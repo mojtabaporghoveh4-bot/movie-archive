@@ -4,21 +4,26 @@ import 'package:http/http.dart' as http;
 
 import 'models.dart';
 
-class TmdbException implements Exception {
+class LookupException implements Exception {
   final String message;
-  TmdbException(this.message);
+  LookupException(this.message);
   @override
   String toString() => message;
 }
 
 class SearchResult {
-  final int id;
+  final int? id; // TMDB id
   final String title;
   final int? year;
   final String? posterPath;
   final String overview;
-  SearchResult(this.id, this.title, this.year, this.posterPath, this.overview);
+  final String? imdbId;
+  final String? posterUrl;
+  SearchResult(this.id, this.title, this.year, this.posterPath, this.overview, {this.imdbId, this.posterUrl});
 }
+
+/// Finds an IMDb ID (tt1234567) in any text, e.g. a full IMDb link.
+String? imdbIdIn(String text) => RegExp(r'tt\d{7,8}').firstMatch(text)?[0];
 
 // TMDB has no sub-genre field; these keywords are used to fill one in.
 const _subGenres = [
@@ -47,16 +52,16 @@ class Tmdb {
           if (bearer) 'Authorization': 'Bearer $key',
         }).timeout(const Duration(seconds: 20));
       } catch (_) {
-        throw TmdbException('No internet connection (or TMDB is not reachable).');
+        throw LookupException('No internet connection (or TMDB is not reachable).');
       }
       if (r.statusCode == 200) return jsonDecode(utf8.decode(r.bodyBytes));
-      if (r.statusCode == 401) throw TmdbException('Your TMDB key is not valid. Check it in Settings.');
-      if (r.statusCode == 404) throw TmdbException('Not found on TMDB.');
+      if (r.statusCode == 401) throw LookupException('Your TMDB key is not valid. Check it in Settings.');
+      if (r.statusCode == 404) throw LookupException('Not found on TMDB.');
       if (r.statusCode == 429 && attempt < 3) {
         await Future.delayed(Duration(seconds: 2 << attempt));
         continue;
       }
-      throw TmdbException('TMDB error ${r.statusCode}.');
+      throw LookupException('TMDB error ${r.statusCode}.');
     }
   }
 
@@ -72,7 +77,7 @@ class Tmdb {
 
   /// Search by title, or by IMDb ID when the text looks like tt1234567.
   Future<List<SearchResult>> lookup(String text, {int? year}) async {
-    final imdb = RegExp(r'tt\d{5,}').firstMatch(text)?[0];
+    final imdb = imdbIdIn(text);
     if (imdb == null) return search(text.trim(), year: year);
     final d = await _get('/find/$imdb', {'external_source': 'imdb_id'});
     return [

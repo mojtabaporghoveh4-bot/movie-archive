@@ -28,12 +28,13 @@ class _LookupPageState extends State<LookupPage> {
   }
 
   Future<void> _search() async {
-    final t = archive.tmdb;
-    if (t == null) return toast(context, 'Add your free TMDB key in Settings to search online.');
+    if (!archive.canLookup) return toast(context, 'Add a free TMDB or OMDb key in Settings to search online.');
     if (_text.text.trim().isEmpty) return;
     setState(() => busy = true);
     try {
-      final r = await t.lookup(_text.text, year: int.tryParse(_year.text.trim()));
+      final year = int.tryParse(_year.text.trim());
+      final t = archive.tmdb;
+      final r = t != null ? await t.lookup(_text.text, year: year) : await archive.omdb!.search(_text.text, year: year);
       setState(() => results = r);
     } catch (e) {
       if (mounted) toast(context, '$e');
@@ -45,6 +46,11 @@ class _LookupPageState extends State<LookupPage> {
   Future<void> _pick(SearchResult r) async {
     final target = widget.forMovie ?? Movie(title: r.title);
     final ok = await withProgress(context, 'Getting movie info', (_) async {
+      if (r.id == null) {
+        target
+          ..tmdbId = null
+          ..imdbId = r.imdbId;
+      }
       await archive.fetchInfo(target, tmdbId: r.id);
       widget.forMovie == null ? await archive.add(target) : await archive.save();
       return true;
@@ -59,7 +65,7 @@ class _LookupPageState extends State<LookupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final owned = {for (final m in archive.movies) m.tmdbId};
+    final owned = {for (final m in archive.movies) ...[m.tmdbId, m.imdbId]}..remove(null);
     return Scaffold(
       appBar: AppBar(title: Text(widget.forMovie == null ? 'Add movie' : 'Change match')),
       body: Center(
@@ -101,7 +107,7 @@ class _LookupPageState extends State<LookupPage> {
                   ? EmptyState(
                       Icons.travel_explore,
                       'Find a movie',
-                      'Type a title or an IMDb ID. Info and posters come from TMDB.',
+                      'Type a title or an IMDb ID. Info comes from TMDB and IMDb (via OMDb).',
                       action: widget.forMovie == null
                           ? OutlinedButton.icon(
                               icon: const Icon(Icons.edit_note),
@@ -128,7 +134,8 @@ class _LookupPageState extends State<LookupPage> {
                                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     SizedBox(
                                       width: 60,
-                                      child: Poster(Movie(title: r.title, posterPath: r.posterPath), radius: 6),
+                                      child: Poster(Movie(title: r.title, posterPath: r.posterPath, posterUrl: r.posterUrl),
+                                          radius: 6),
                                     ),
                                     const SizedBox(width: 14),
                                     Expanded(
@@ -138,7 +145,7 @@ class _LookupPageState extends State<LookupPage> {
                                             child: Text('${r.title}${r.year != null ? ' (${r.year})' : ''}',
                                                 style: Theme.of(context).textTheme.titleMedium),
                                           ),
-                                          if (owned.contains(r.id)) ...[
+                                          if (owned.contains(r.id) || owned.contains(r.imdbId)) ...[
                                             const SizedBox(width: 8),
                                             const Chip(label: Text('In archive'), visualDensity: VisualDensity.compact),
                                           ],

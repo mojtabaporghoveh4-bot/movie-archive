@@ -14,18 +14,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late final _key = TextEditingController(text: archive.tmdbKey);
-  bool _showKey = false;
-
-  Future<void> _testKey() async {
-    archive.tmdbKey = _key.text;
-    final ok = await withProgress(context, 'Checking key', (_) async {
-      await archive.tmdb!.search('The Matrix');
-      return true;
-    });
-    if (ok == true && mounted) toast(context, 'Key works. You are connected to TMDB.');
-  }
-
   Future<void> _importArchive() async {
     final f = await pickTextFile();
     if (f == null || !mounted) return;
@@ -79,35 +67,26 @@ class _SettingsPageState extends State<SettingsPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
-              header('Movie info (TMDB)'),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Titles, directors, cast, genres and posters come from The Movie Database (TMDB). '
-                        'Get a free API key and paste it here.'),
-                    TextButton.icon(
-                      icon: const Icon(Icons.open_in_new, size: 18),
-                      label: const Text('Get a free TMDB key'),
-                      onPressed: () => launchUrl(Uri.parse('https://www.themoviedb.org/settings/api')),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: _key,
-                      obscureText: !_showKey,
-                      decoration: InputDecoration(
-                        labelText: 'API key or read access token',
-                        suffixIcon: IconButton(
-                          icon: Icon(_showKey ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _showKey = !_showKey),
-                        ),
-                      ),
-                      onChanged: (v) => archive.tmdbKey = v,
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.tonal(onPressed: _testKey, child: const Text('Test key')),
-                  ]),
-                ),
+              header('Movie info'),
+              _KeyCard(
+                title: 'TMDB (info and posters)',
+                about: 'Titles, directors, cast, genres, collections and posters come from The Movie Database (TMDB).',
+                link: 'https://www.themoviedb.org/settings/api',
+                label: 'API key or read access token',
+                initial: archive.tmdbKey,
+                onChanged: (v) => archive.tmdbKey = v,
+                test: () => archive.tmdb!.search('The Matrix'),
+              ),
+              const SizedBox(height: 12),
+              _KeyCard(
+                title: 'OMDb (IMDb rating)',
+                about: 'Adds the IMDb rating and votes. Works alone too: without a TMDB key, all info comes from IMDb '
+                    'through OMDb. Free key: 1,000 movies per day.',
+                link: 'https://www.omdbapi.com/apikey.aspx',
+                label: 'OMDb API key',
+                initial: archive.omdbKey,
+                onChanged: (v) => archive.omdbKey = v,
+                test: () => archive.omdb!.movie(imdbId: 'tt0133093'),
               ),
               header('Sync between computer and phone'),
               Card(
@@ -191,9 +170,9 @@ class _SettingsPageState extends State<SettingsPage> {
               Card(
                 child: ListTile(
                   leading: Icon(Icons.movie_filter_rounded, color: scheme.primary, size: 32),
-                  title: const Text('Movie Archive 1.0.1'),
+                  title: const Text('Movie Archive 1.1.0'),
                   subtitle: const Text('Created by ArMo · Telegram @mocntrl\n'
-                      'Movie info and posters by TMDB. This app is not endorsed by TMDB.'),
+                      'Info and posters by TMDB, IMDb ratings via OMDb. Not endorsed by TMDB or IMDb.'),
                   isThreeLine: true,
                   onTap: () => launchUrl(Uri.parse('https://t.me/mocntrl')),
                 ),
@@ -204,4 +183,69 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+}
+
+/// A card to enter, show/hide, and test one API key.
+class _KeyCard extends StatefulWidget {
+  final String title, about, link, label, initial;
+  final void Function(String) onChanged;
+  final Future<Object?> Function() test;
+  const _KeyCard({
+    required this.title,
+    required this.about,
+    required this.link,
+    required this.label,
+    required this.initial,
+    required this.onChanged,
+    required this.test,
+  });
+  @override
+  State<_KeyCard> createState() => _KeyCardState();
+}
+
+class _KeyCardState extends State<_KeyCard> {
+  late final _key = TextEditingController(text: widget.initial);
+  bool _show = false;
+
+  Future<void> _test() async {
+    if (_key.text.trim().isEmpty) return toast(context, 'Paste your key first.');
+    widget.onChanged(_key.text);
+    final ok = await withProgress(context, 'Checking key', (_) async {
+      await widget.test();
+      return true;
+    });
+    if (ok == true && mounted) toast(context, 'Key works.');
+  }
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(widget.title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(widget.about),
+            TextButton.icon(
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Text('Get a free key'),
+              onPressed: () => launchUrl(Uri.parse(widget.link)),
+            ),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _key,
+              obscureText: !_show,
+              decoration: InputDecoration(
+                labelText: widget.label,
+                suffixIcon: IconButton(
+                  icon: Icon(_show ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _show = !_show),
+                ),
+              ),
+              onChanged: widget.onChanged,
+            ),
+            const SizedBox(height: 12),
+            FilledButton.tonal(onPressed: _test, child: const Text('Test key')),
+          ]),
+        ),
+      );
 }
