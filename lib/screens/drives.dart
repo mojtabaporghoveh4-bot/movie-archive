@@ -31,7 +31,11 @@ class DrivesPage extends StatelessWidget {
         (update) => archive.scan(root!, drive: drive, name: name, onProgress: (n) => update('Found $n video files…')));
     if (r == null || !context.mounted) return;
     final (added, removed) = r;
-    toast(context, 'Done: $added new, $removed no longer there.');
+    toast(
+        context,
+        archive.canLookup || added == 0
+            ? 'Done: $added new, $removed no longer there.'
+            : 'Done: $added new. Add a free TMDB or OMDb key in Settings to get their info and posters.');
     // New movies get their info and posters right away.
     if (added > 0 && archive.canLookup) {
       final todo = archive.movies.where((m) => !m.matched && m.driveId == (drive?.id ?? archive.drives.last.id)).toList();

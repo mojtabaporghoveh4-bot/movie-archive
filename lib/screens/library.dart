@@ -4,6 +4,7 @@ import '../archive.dart';
 import '../models.dart';
 import '../widgets.dart';
 import 'lookup.dart';
+import 'settings.dart';
 
 class LibraryPage extends StatefulWidget {
   final Facet? facet;
@@ -167,6 +168,24 @@ class _LibraryPageState extends State<LibraryPage> {
                 ]),
               ),
               const SizedBox(height: 4),
+              if (!archive.canLookup && unmatched > 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Card(
+                    color: Theme.of(context).colorScheme.tertiaryContainer,
+                    child: ListTile(
+                      leading: const Icon(Icons.key_outlined),
+                      title: const Text('Movie info is off'),
+                      subtitle: Text('$unmatched movies have no director, cast, genre or poster yet. '
+                          'Add a free TMDB or OMDb key to fill them in automatically.'),
+                      trailing: FilledButton(
+                        onPressed: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const SettingsPage())),
+                        child: const Text('Add key'),
+                      ),
+                    ),
+                  ),
+                ),
               Expanded(child: _results(list)),
             ]),
           );
