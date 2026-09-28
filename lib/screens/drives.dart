@@ -171,6 +171,7 @@ class _OrganizeDialogState extends State<OrganizeDialog> {
   @override
   Widget build(BuildContext context) => AlertDialog(
         title: const Text('Organize folders'),
+        scrollable: true, // stays usable in a small window
         content: SizedBox(
           width: 460,
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [

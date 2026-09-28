@@ -39,6 +39,7 @@ class _LibraryPageState extends State<LibraryPage> {
   Future<void> _addFilter() async {
     await showModalBottomSheet(
       context: context,
+      constraints: const BoxConstraints(maxWidth: 720),
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => FractionallySizedBox(heightFactor: 0.8, child: FilterSheet(q)),
