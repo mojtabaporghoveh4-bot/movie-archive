@@ -60,14 +60,17 @@ class DrivesPage extends StatelessWidget {
           final scheme = Theme.of(context).colorScheme;
           final manual = archive.movies.where((m) => m.driveId == null).length;
           return Scaffold(
-            appBar: AppBar(title: const Text('Drives')),
-            floatingActionButton: isDesktop
-                ? FloatingActionButton.extended(
+            appBar: AppBar(title: const Text('Drives'), actions: [
+              if (isDesktop)
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: FilledButton.icon(
                     onPressed: () => _scan(context),
                     icon: const Icon(Icons.add),
                     label: const Text('Scan a drive'),
-                  )
-                : null,
+                  ),
+                ),
+            ]),
             body: archive.drives.isEmpty && manual == 0
                 ? EmptyState(
                     Icons.storage_outlined,

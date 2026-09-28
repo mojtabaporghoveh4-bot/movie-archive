@@ -170,7 +170,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Card(
                 child: ListTile(
                   leading: Icon(Icons.movie_filter_rounded, color: scheme.primary, size: 32),
-                  title: const Text('Movie Archive 1.1.0'),
+                  title: const Text('Movie Archive 1.1.1'),
                   subtitle: const Text('Created by ArMo · Telegram @mocntrl\n'
                       'Info and posters by TMDB, IMDb ratings via OMDb. Not endorsed by TMDB or IMDb.'),
                   isThreeLine: true,

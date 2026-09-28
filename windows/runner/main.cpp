@@ -1,6 +1,9 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter_windows.h>
 #include <windows.h>
+
+#include <algorithm>
 
 #include "flutter_window.h"
 #include "utils.h"
@@ -25,8 +28,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1360, 860);
+  // Open centered and always fully on screen: 1200x760, or smaller on small or scaled screens.
+  RECT work;
+  ::SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
+  const double scale =
+      FlutterDesktopGetDpiForMonitor(::MonitorFromPoint({work.left, work.top}, MONITOR_DEFAULTTOPRIMARY)) / 96.0;
+  const int work_w = static_cast<int>((work.right - work.left) / scale);
+  const int work_h = static_cast<int>((work.bottom - work.top) / scale);
+  const int width = (std::min)(1200, work_w * 9 / 10);
+  const int height = (std::min)(760, work_h * 9 / 10);
+  Win32Window::Point origin(static_cast<int>(work.left / scale) + (work_w - width) / 2,
+                            static_cast<int>(work.top / scale) + (work_h - height) / 2);
+  Win32Window::Size size(width, height);
   if (!window.Create(L"Movie Archive", origin, size)) {
     return EXIT_FAILURE;
   }

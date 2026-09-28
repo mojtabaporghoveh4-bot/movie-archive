@@ -97,7 +97,8 @@ class _LibraryPageState extends State<LibraryPage> {
                 const SizedBox(width: 8),
               ],
             ),
-            floatingActionButton: widget.facet == null
+            // On Windows the button sits next to the search box, so it is always visible.
+            floatingActionButton: widget.facet == null && !isDesktop
                 ? FloatingActionButton.extended(
                     onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LookupPage())),
                     icon: const Icon(Icons.add),
@@ -107,7 +108,8 @@ class _LibraryPageState extends State<LibraryPage> {
             body: Column(children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: SearchBar(
+                child: Row(children: [
+                  Expanded(child: SearchBar(
                   controller: _search,
                   hintText: 'Search title, director, actor, year, genre…',
                   leading: const Icon(Icons.search),
@@ -122,7 +124,17 @@ class _LibraryPageState extends State<LibraryPage> {
                               })),
                   ],
                   onChanged: (v) => setState(() => q.text = v),
-                ),
+                  )),
+                  if (widget.facet == null && isDesktop) ...[
+                    const SizedBox(width: 12),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LookupPage())),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add movie'),
+                    ),
+                  ],
+                ]),
               ),
               SizedBox(
                 height: 44,
