@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
 import 'omdb.dart';
@@ -80,38 +79,63 @@ class MovieQuery {
 class Archive extends ChangeNotifier {
   final File _file;
   final Directory posterDir;
-  final SharedPreferences prefs;
+  final File _settingsFile;
+  Map<String, dynamic> _settings = {};
   List<Drive> drives = [];
   List<Movie> movies = [];
 
-  Archive.at(this._file, this.posterDir, this.prefs);
+  Archive.at(this._file, this.posterDir) : _settingsFile = File(p.join(p.dirname(_file.path), 'settings.json')) {
+    _settings = _readSettings();
+  }
 
   static Future<Archive> open() async {
     final dir = await getApplicationSupportDirectory();
-    final a = Archive.at(File(p.join(dir.path, 'library.json')), Directory(p.join(dir.path, 'posters')),
-        await SharedPreferences.getInstance());
+    final a = Archive.at(File(p.join(dir.path, 'library.json')), Directory(p.join(dir.path, 'posters')));
     if (await a._file.exists()) a._load(jsonDecode(await a._file.readAsString()));
     return a;
   }
 
   // ---------- settings ----------
+  // Kept in settings.json next to the library (never in the exported/synced archive file).
 
-  String get tmdbKey => prefs.getString('tmdbKey') ?? '';
-  set tmdbKey(String v) => prefs.setString('tmdbKey', v.trim()).then((_) => notifyListeners());
+  Map<String, dynamic> _readSettings() {
+    try {
+      return jsonDecode(_settingsFile.readAsStringSync()) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Saves one setting right away. Re-reads the file first so nothing another window saved is lost.
+  void setSetting(String key, Object? value) {
+    _settings = _readSettings();
+    value == null || value == '' ? _settings.remove(key) : _settings[key] = value;
+    _settingsFile.parent.createSync(recursive: true);
+    final tmp = File('${_settingsFile.path}.tmp')..writeAsStringSync(const JsonEncoder.withIndent(' ').convert(_settings), flush: true);
+    tmp.renameSync(_settingsFile.path);
+    notifyListeners();
+  }
+
+  T? setting<T>(String key) => _settings[key] is T ? _settings[key] as T : null;
+
+  String get tmdbKey => setting<String>('tmdbKey') ?? '';
+  set tmdbKey(String v) => setSetting('tmdbKey', v.trim());
   Tmdb? get tmdb => tmdbKey.isEmpty ? null : Tmdb(tmdbKey);
 
-  String get omdbKey => prefs.getString('omdbKey') ?? '';
-  set omdbKey(String v) => prefs.setString('omdbKey', v.trim()).then((_) => notifyListeners());
+  String get omdbKey => setting<String>('omdbKey') ?? '';
+  set omdbKey(String v) => setSetting('omdbKey', v.trim());
   Omdb? get omdb => omdbKey.isEmpty ? null : Omdb(omdbKey);
 
   bool get canLookup => tmdb != null || omdb != null;
 
-  String? get syncFolder => prefs.getString('syncFolder');
-  set syncFolder(String? v) =>
-      (v == null ? prefs.remove('syncFolder') : prefs.setString('syncFolder', v)).then((_) => save());
+  String? get syncFolder => setting<String>('syncFolder');
+  set syncFolder(String? v) {
+    setSetting('syncFolder', v);
+    save();
+  }
 
-  ThemeMode get themeMode => ThemeMode.values.byName(prefs.getString('theme') ?? 'dark');
-  set themeMode(ThemeMode v) => prefs.setString('theme', v.name).then((_) => notifyListeners());
+  ThemeMode get themeMode => ThemeMode.values.byName(setting<String>('theme') ?? 'dark');
+  set themeMode(ThemeMode v) => setSetting('theme', v.name);
 
   // ---------- storage ----------
 
@@ -147,7 +171,7 @@ class Archive extends ChangeNotifier {
   Future<int> importJson(String text, {required bool replace}) async {
     final j = jsonDecode(text);
     if (j is! Map<String, dynamic> || j['movies'] is! List) throw const FormatException('Not a Movie Archive file.');
-    final incoming = Archive.at(_file, posterDir, prefs).._load(j);
+    final incoming = Archive.at(_file, posterDir).._load(j);
     if (replace) {
       drives = incoming.drives;
       movies = incoming.movies;

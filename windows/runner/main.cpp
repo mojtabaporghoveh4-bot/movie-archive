@@ -10,6 +10,17 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  // Only one window at a time, so two copies never overwrite each other's data.
+  // Opening the app again brings the open window to the front.
+  ::CreateMutexW(nullptr, TRUE, L"ArMo.MovieArchive.SingleInstance");
+  if (::GetLastError() == ERROR_ALREADY_EXISTS) {
+    if (HWND open = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Movie Archive")) {
+      ::ShowWindow(open, SW_RESTORE);
+      ::SetForegroundWindow(open);
+    }
+    return EXIT_SUCCESS;
+  }
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {

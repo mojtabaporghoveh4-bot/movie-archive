@@ -5,16 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:movie_archive/archive.dart';
 import 'package:movie_archive/models.dart';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   late Directory tmp;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
     tmp = await Directory.systemTemp.createTemp('archive');
-    archive = Archive.at(File(p.join(tmp.path, 'library.json')), Directory(p.join(tmp.path, 'posters')),
-        await SharedPreferences.getInstance());
+    archive = Archive.at(File(p.join(tmp.path, 'library.json')), Directory(p.join(tmp.path, 'posters')));
   });
   tearDown(() => tmp.delete(recursive: true));
 
@@ -57,6 +54,15 @@ void main() {
     await archive.importJson(jsonText, replace: true);
     expect(archive.movies.length, 2);
     expect(archive.query(MovieQuery()..onlyDuplicates = true), isEmpty);
+  });
+
+  test('settings survive a restart and are not lost by a second window', () async {
+    final other = Archive.at(File(p.join(tmp.path, 'library.json')), Directory(p.join(tmp.path, 'posters')));
+    archive.tmdbKey = ' abc123 ';
+    other.setSetting('grid', false); // the other window never saw the key
+    final reopened = Archive.at(File(p.join(tmp.path, 'library.json')), Directory(p.join(tmp.path, 'posters')));
+    expect([reopened.tmdbKey, reopened.setting<bool>('grid')], ['abc123', false]);
+    expect(jsonEncode(archive.toJson()).contains('abc123'), isFalse, reason: 'keys must not go into the synced file');
   });
 
   test('organize with links keeps files in place', () async {

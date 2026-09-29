@@ -11,6 +11,8 @@ AppName=Movie Archive
 AppVersion={#AppVersion}
 AppVerName=Movie Archive {#AppVersion}
 AppPublisher=ArMo
+; Setup asks to close the app if it is open.
+AppMutex=ArMo.MovieArchive.SingleInstance
 AppPublisherURL=https://t.me/mocntrl
 AppSupportURL=https://t.me/mocntrl
 DefaultDirName={autopf}\Movie Archive

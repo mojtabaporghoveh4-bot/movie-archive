@@ -170,7 +170,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Card(
                 child: ListTile(
                   leading: Icon(Icons.movie_filter_rounded, color: scheme.primary, size: 32),
-                  title: const Text('Movie Archive 1.1.2'),
+                  title: const Text('Movie Archive 1.1.3'),
                   subtitle: const Text('Created by ArMo · Telegram @mocntrl\n'
                       'Info and posters by TMDB, IMDb ratings via OMDb. Not endorsed by TMDB or IMDb.'),
                   isThreeLine: true,
@@ -214,7 +214,13 @@ class _KeyCardState extends State<_KeyCard> {
       await widget.test();
       return true;
     });
-    if (ok == true && mounted) toast(context, 'Key works.');
+    if (ok != true || !mounted) return;
+    // Key works: fill in every movie that has no info yet.
+    final todo = archive.movies.where((m) => !m.matched).toList();
+    if (todo.isEmpty) return toast(context, 'Key works. It is saved, you will not need to enter it again.');
+    final found = await withProgress(context, 'Key works. Finding info for your movies',
+        (update) => archive.fetchMany(todo, update));
+    if (found != null && mounted) toast(context, 'Found info for $found of ${todo.length} movies.');
   }
 
   @override

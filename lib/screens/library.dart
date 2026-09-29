@@ -19,8 +19,8 @@ class _LibraryPageState extends State<LibraryPage> {
   late final MovieQuery q = MovieQuery(widget.facet, widget.value);
   final _search = TextEditingController();
 
-  bool get _grid => archive.prefs.getBool('grid') ?? true;
-  set _grid(bool v) => archive.prefs.setBool('grid', v).then((_) => setState(() {}));
+  bool get _grid => archive.setting<bool>('grid') ?? true;
+  set _grid(bool v) => archive.setSetting('grid', v);
 
   Future<void> _fetchMissing() async {
     final todo = archive.movies.where((m) => !m.matched).toList();
